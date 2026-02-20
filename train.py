@@ -8,6 +8,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from utils import parse_labels, create_dataset, get_masked_loss
 
 class BatchLossCallback(tf.keras.callbacks.Callback):
+    "A custom callback designed to record the training loss after every single batch."
     def __init__(self):
         super().__init__()
         self.batch_losses = []
@@ -16,6 +17,7 @@ class BatchLossCallback(tf.keras.callbacks.Callback):
         self.batch_losses.append(logs.get('loss'))
 
 def calculate_class_weights(labels_dict):
+    "Computes balancing weights by comparing positive and negative counts to ensure the model pays enough attention to rare attributes."
     all_labels = np.array(list(labels_dict.values()))
     pos_counts = np.sum(all_labels == 1.0, axis=0)
     neg_counts = np.sum(all_labels == 0.0, axis=0)
@@ -26,6 +28,7 @@ def calculate_class_weights(labels_dict):
     return pos_weights.tolist()
 
 def build_model():
+    "Assembles the neural network by combining built-in data augmentation, a pre-trained EfficientNetB0 base, and custom output layers."
     inputs = layers.Input(shape=(224, 224, 3))
     
     x = layers.RandomFlip("horizontal_and_vertical")(inputs)

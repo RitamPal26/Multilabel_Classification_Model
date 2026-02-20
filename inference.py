@@ -4,6 +4,7 @@ import tensorflow as tf
 import numpy as np
 
 def load_and_preprocess_image(image_path):
+    "Reads image from disk, decodes it, resizes it to 224x224 pixels, and formats it into a tensor."
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"Image not found at: {image_path}")
         

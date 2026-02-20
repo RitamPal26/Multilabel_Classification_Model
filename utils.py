@@ -3,6 +3,7 @@ import tensorflow as tf
 import numpy as np
 
 def parse_labels(label_file_path):
+    "Reads .txt and converts the string attributes into a dictionary of numerical labels (1.0, 0.0, or -1.0)."
     labels_dict = {}
     
     with open(label_file_path, 'r') as file:
@@ -30,12 +31,14 @@ def parse_labels(label_file_path):
     return labels_dict
 
 def process_image(image_path, label):
+    "A function for the dataset pipeline that reads and resizes individual images while keeping their corresponding labels attached."
     image = tf.io.read_file(image_path)
     image = tf.image.decode_jpeg(image, channels=3)
     image = tf.image.resize(image, [224, 224])
     return image, label
 
 def create_dataset(image_dir, labels_dict, batch_size=32, is_training=True):
+    "Builds a highly efficient TensorFlow data pipeline that handles loading, shuffling, and batching images for training."
     image_paths = []
     labels = []
     
@@ -58,6 +61,7 @@ def create_dataset(image_dir, labels_dict, batch_size=32, is_training=True):
     return dataset
 
 def get_masked_loss(pos_weights=None, gamma=2.0):
+    "Generates a custom focal loss function that ignores missing labels and applies weights to handle class imbalance."
     def masked_focal_loss(y_true, y_pred):
         mask_value = -1.0
         
