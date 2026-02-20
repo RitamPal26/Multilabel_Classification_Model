@@ -57,23 +57,28 @@ def create_dataset(image_dir, labels_dict, batch_size=32, is_training=True):
     dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
     return dataset
 
-def get_masked_loss(pos_weights=None):
-    def masked_binary_crossentropy(y_true, y_pred):
+def get_masked_loss(pos_weights=None, gamma=2.0):
+    def masked_focal_loss(y_true, y_pred):
         mask_value = -1.0
         
         mask = tf.cast(tf.not_equal(y_true, mask_value), tf.float32)
-        
         y_true_safe = tf.where(tf.equal(y_true, mask_value), tf.zeros_like(y_true), y_true)
         
-        bce = tf.keras.losses.binary_crossentropy(y_true_safe, y_pred, from_logits=True)
+        bce = tf.nn.sigmoid_cross_entropy_with_logits(labels=y_true_safe, logits=y_pred)
+        
+        pred_prob = tf.nn.sigmoid(y_pred)
+        
+        p_t = y_true_safe * pred_prob + (1 - y_true_safe) * (1 - pred_prob)
+        modulating_factor = tf.pow(1.0 - p_t, gamma)
         
         if pos_weights is not None:
             weights = tf.constant(pos_weights, dtype=tf.float32)
             weight_vector = y_true_safe * weights + (1 - y_true_safe)
             bce = bce * weight_vector
 
-        masked_loss = bce * mask 
+        focal_loss = modulating_factor * bce
+        masked_loss = focal_loss * mask 
         
         return tf.reduce_sum(masked_loss) / (tf.reduce_sum(mask) + 1e-5)
         
-    return masked_binary_crossentropy
+    return masked_focal_loss
