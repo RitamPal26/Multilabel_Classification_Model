@@ -6,6 +6,12 @@
 
 3. **`inference.py`:** A standalone script that takes a single image path as a command-line argument. It loads the saved weights, processes the image, and prints the list of detected attributes based on a calibrated probability threshold.
 
+# Evaluation
+
+The model was evaluated using a specialized validation script that accounts for the dataset's unique challenges. Instead of using simple accuracy—which can be misleading on imbalanced data—I focused on Precision, Recall, and F1-Score for each attribute. Crucially, the evaluation logic mirrors the training logic by masking out "NA" values, ensuring the metrics are calculated only against verified ground-truth labels.
+
+![alt text](image.png)
+
 # Tech Stack 
 
 Built with Python using TensorFlow/Keras for the EfficientNet-B0 architecture, utilizing OpenCV/PIL for image processing and Matplotlib for training visualization.
