@@ -1,6 +1,18 @@
+# Deliverables
+
+1. **`train.py`:** This script serves as the main entry point for the training pipeline. It ingests the raw images and the `labels.txt` file, processes them through the two-phase fine-tuning architecture, and outputs the final model weights.
+
+2. **`outputs/loss_curve.png`:** This plot captures the loss progression across both the initial warm-up and the subsequent fine-tuning phase.
+
+3. **`inference.py`:** A standalone script that takes a single image path as a command-line argument. It loads the saved weights, processes the image, and prints the list of detected attributes based on a calibrated probability threshold.
+
+# Tech Stack 
+
+Built with Python using TensorFlow/Keras for the EfficientNet-B0 architecture, utilizing OpenCV/PIL for image processing and Matplotlib for training visualization.
+
 # Architectural Strategy & Problem Solving
 
-Here is a breakdown of the engineering decisions behind this project. The Aimonk dataset threw two major curveballs: severe class imbalance and missing ground-truth data (the "NA" values). Here is how I tackled them.
+Here is a breakdown of the engineering decisions behind this project.
 
 ## 1. Choosing the Architecture
 
@@ -13,7 +25,7 @@ I went with **Transfer Learning** using the `EfficientNet-B0` architecture. I ch
 * **Two-Phase Fine-Tuning:**
 
   1. **Warm-up (5 epochs):** I trained the new custom head. If you don't do this, the random initial weights in the new head will send massive errors backward and scramble the pre-trained brain of the base model.
-  
+
   2. **Fine-Tuning:** Unfroze the top 27 layers of the base model, dropped the learning rate from `1e-3` to `1e-4`, and let the network deeply adapt to my specific dataset. I also tied this to an Early Stopping callback so it would quit exactly when it stopped improving.
 
 
