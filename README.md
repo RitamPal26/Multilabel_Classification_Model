@@ -1,4 +1,4 @@
-# Aimonk Multilabel Classification Project
+# Multilabel_Classification_Model
 
 This repository contains a deep learning pipeline for a multilabel image classification task and trains a model to detect the presence of 4 independent attributes.
 
@@ -14,7 +14,7 @@ Multilabel_Classification_Model/
 ├── inference.py                # Predicts attributes for a single input image
 ├── utils.py                    # Core engine: Custom loss functions, data parsers, and loaders
 │
-├── outputs/                    # Auto-generated during training
+├── outputs/                    # Auto-generated after training
 │   ├── model_weights.keras     # The saved deep learning model
 │   └── loss_curve.png          # Training loss vs. iteration number
 │

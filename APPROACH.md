@@ -1,34 +1,54 @@
 # Architectural Strategy & Problem Solving
 
-This document outlines the engineering decisions made to satisfy the specific constraints of the Aimonk multilabel dataset, specifically addressing missing data ("NA") and severe class imbalance.
+Here is a breakdown of the engineering decisions behind this project. The Aimonk dataset threw two major curveballs: severe class imbalance and missing ground-truth data (the "NA" values). Here is how I tackled them.
 
-## 1. Architectural Strategy
-The core model utilizes **Transfer Learning** via the `EfficientNet-B0` architecture. EfficientNet-B0 was chosen because it offers an exceptionally high accuracy-to-parameter ratio, making it highly resistant to overfitting on imbalanced datasets compared to heavier models like ResNet-50.
+## 1. Choosing the Architecture
 
-* **Base:** Pre-trained ImageNet weights (top classification layer removed).
-* **Head:** A `GlobalAveragePooling2D` layer, followed by a `Dropout(0.3)` layer for regularization, and a final `Dense` layer with 4 output neurons (no activation function applied here for mathematical stability in the loss function).
-* **Two-Phase Fine-Tuning:** 1. **Warm-up:** Trained only the custom head for 5 epochs to prevent random initial weights from destroying the pre-trained feature maps.
-  2. **Fine-Tuning:** Unfroze the top 27 layers of the EfficientNet base, reduced the learning rate from 1e-3 to 1e-4, and trained using an Early Stopping callback to deeply adapt the network to the specific attributes of this dataset.
+I went with **Transfer Learning** using the `EfficientNet-B0` architecture. I chose it because it is modern, and a balance of high accuracy and exceptional computational efficiency.
 
-## 2. Handling Missing Annotations ("NA" Values)
-The dataset contained rows tagged with "NA", indicating missing ground-truth information for specific attributes. Deleting these images would discard valuable data, and replacing "NA" with `0` would introduce false negatives.
+* **The Base:** I started with pre-trained ImageNet weights and chopped off the top classification layer.
 
-**Solution: Custom Masked Loss Function**
-During data parsing, "NA" strings were converted to a mathematical masking value (`-1.0`). Inside the custom TensorFlow loss calculation, a boolean mask dynamically zeros out the loss for any attribute labeled `-1.0`. This mathematically forces the network to only update its weights based on known data (0s and 1s), safely ignoring the missing gaps while still learning from the other present attributes in that same image.
+* **The Custom Head:** Added a `GlobalAveragePooling2D` layer, dropped in a `Dropout(0.3)` layer to keep things regularized, and finished with a 4-neuron `Dense` layer to predict our specific attributes.
 
-## 3. Handling the Skewed / Imbalanced Dataset
-Multilabel datasets often suffer from extreme class imbalances, causing models to heavily bias toward common attributes. I tackled this through two integrated techniques:
+* **Two-Phase Fine-Tuning:**
 
-* **Dynamic Class Weighting:** The data loader pipeline dynamically calculates the ratio of negative to positive samples for each of the 4 attributes before training begins. Rare attributes receive a proportionally massive weight multiplier.
-* **Masked Focal Loss:** To prevent the massive class weights from destabilizing the training loop (causing massive error spikes), the custom masked loss function was upgraded to a **Masked Focal Loss**. This applies a modulating factor to the cross-entropy calculation. It down-weights the error for attributes the model confidently recognizes, forcing the optimizer to focus its learning capacity strictly on the hard, minority classes.
+  1. **Warm-up (5 epochs):** I trained the new custom head. If you don't do this, the random initial weights in the new head will send massive errors backward and scramble the pre-trained brain of the base model.
+  
+  2. **Fine-Tuning:** Unfroze the top 27 layers of the base model, dropped the learning rate from `1e-3` to `1e-4`, and let the network deeply adapt to my specific dataset. I also tied this to an Early Stopping callback so it would quit exactly when it stopped improving.
+
+
+
+## 2. Dealing with Missing Data ("NA" Values)
+
+A lot of images had "NA" instead of a 1 or 0 for certain attributes. Throwing those images away felt like a huge waste of data, but replacing "NA" with a `0` would introduce false negatives and teach the model the wrong patterns.
+
+**The Fix: A Custom Masked Loss Function**
+
+During data parsing, I converted all "NA" strings to `-1.0`. Then, I wrote a TensorFlow loss function that uses a boolean mask to literally zero out the loss for any `-1.0` label. This mathematically forces the network to only update its weights based on the known data in an image, cleanly skipping over the gaps.
+
+## 3. Tackling the Class Imbalance
+
+Some attributes were everywhere, while others were extremely rare. If left alone, the model would just take the lazy route: guess the common attributes every time and ignore the rare ones entirely.
+
+* **Dynamic Class Weighting:** I set up the data pipeline to calculate the exact rarity of each attribute right before training starts. Rare attributes were handed massive penalty weight multipliers.
+
+* **Masked Focal Loss:** To keep those massive weights from violently destabilizing the training loop, I upgraded my custom loss function to **Focal Loss**.  It dynamically shrinks the error penalty for the easy, common attributes, forcing the optimizer to spend all its energy learning the rare, difficult classes.
 
 ## 4. Pre-processing & Augmentations
-To prevent overfitting and force the model to learn true visual concepts rather than memorizing exact pixel layouts, **Data Augmentation** was integrated directly into the TensorFlow graph via Keras preprocessing layers:
+
+To make sure the model actually learned what the attributes look like—instead of just lazily memorizing the pixel layouts of the training images—I baked data augmentation directly into the TensorFlow graph using Keras layers:
+
 * `RandomFlip("horizontal_and_vertical")`
 * `RandomRotation(0.2)`
 
-## 5. Future Improvements (Unimplemented due to time constraints)
-Given more time, I would implement the following techniques to further boost accuracy:
-* **Optimal Threshold Calibration:** Instead of relying on manual probability thresholds during inference, I would use a validation set to plot a Precision-Recall curve and mathematically calculate the optimal, independent probability threshold for *each* of the 4 attributes.
-* **Advanced Augmentations (Cutout):** Implementing Cutout (randomly masking square regions of the input image) forces the network to look at the entire image context rather than relying on a single distinguishing feature for a specific attribute.
-* **MLSMOTE:** For extreme class imbalances, applying Multi-Label Synthetic Minority Over-sampling Technique (MLSMOTE) to synthetically generate new feature combinations for the rarest attributes before training.
+This means the model never sees the exact same image twice during training.
+
+## 5. What I'd Do With More Time
+
+If I had more time to improve the model further, here is how I'd push the accuracy even more:
+
+* **Threshold Calibration:** Instead of using a flat 50% cutoff to decide if an attribute is present, I would use a validation set to plot a Precision-Recall curve and mathematically calculate the perfect independent probability threshold for *each* of the 4 attributes.
+
+* **Advanced Augmentation:** Implementing Cutout (blocking out random squares of the input image) would force the network to look at the entire context of the image rather than hyper-fixating on a single distinguishing feature.
+
+* **MLSMOTE:** For the extremely rare classes, I'd apply the Multi-Label Synthetic Minority Over-sampling Technique to synthetically generate brand new feature combinations before training.
