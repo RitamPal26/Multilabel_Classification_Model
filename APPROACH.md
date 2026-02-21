@@ -14,7 +14,7 @@ The model was evaluated using a specialized validation script that accounts for 
 
 # Tech Stack 
 
-Built with Python using TensorFlow/Keras for the EfficientNet-B0 architecture, utilizing OpenCV/PIL for image processing and Matplotlib for training visualization.
+Built with Python using TensorFlow/Keras for the EfficientNet-B0 architecture,Matplotlib for training visualization.
 
 # Architectural Strategy & Problem Solving
 
